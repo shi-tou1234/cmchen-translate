@@ -1,0 +1,47 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 划译 · 应用图标（源文件）：渐变圆角方块 + 双语对话气泡 -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4F8CFF"/>
+      <stop offset="0.55" stop-color="#6A6EF8"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bubbleA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#E8EEFF"/>
+    </linearGradient>
+    <linearGradient id="bubbleB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B2ED8"/>
+      <stop offset="1" stop-color="#2B1FA8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底板 -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bg)"/>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#gloss)"/>
+
+  <!-- 大气泡：中文「文」 -->
+  <g>
+    <rect x="84" y="112" width="228" height="156" rx="42" fill="url(#bubbleA)"/>
+    <path d="M148 258 L148 306 L206 258 Z" fill="#E8EEFF"/>
+    <text x="198" y="238" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif"
+          font-size="104" font-weight="700" fill="#4F46E5">文</text>
+  </g>
+
+  <!-- 小气泡：英文「A」 -->
+  <g>
+    <rect x="240" y="248" width="196" height="140" rx="38" fill="url(#bubbleB)"/>
+    <path d="M372 378 L372 420 L322 378 Z" fill="#3B2ED8"/>
+    <text x="338" y="356" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif"
+          font-size="98" font-weight="700" fill="#ffffff">A</text>
+  </g>
+
+  <!-- 点睛：右上角星光 -->
+  <circle cx="404" cy="128" r="14" fill="#ffffff" opacity="0.9"/>
+  <circle cx="438" cy="170" r="8" fill="#ffffff" opacity="0.7"/>
+</svg>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { background: transparent; }
+    body {
+      font-family: system-ui, 'Microsoft YaHei', sans-serif;
+      color: #1f2328; height: 100vh; overflow: hidden; padding: 6px;
+      animation: pop-in 0.18s ease-out;
+    }
+    @keyframes pop-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .card {
+      display: flex; flex-direction: column; height: 100%;
+      background: #ffffff; border: 1px solid #e4e8f2; border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(31, 41, 82, 0.18); overflow: hidden;
+    }
+    .head {
+      display: flex; align-items: center; gap: 8px; padding: 9px 12px 8px 14px;
+      background: linear-gradient(90deg, #4F8CFF 0%, #8B5CF6 100%);
+    }
+    .logo { width: 18px; height: 18px; flex: none; }
+    .brand { color: #fff; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; }
+    .badge {
+      margin-left: auto; background: rgba(255,255,255,0.22); color: #fff;
+      font-size: 11px; padding: 2px 9px; border-radius: 999px; max-width: 200px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #close { margin-left: 6px; border: none; background: rgba(255,255,255,0.16); color: #fff;
+             width: 22px; height: 22px; border-radius: 7px; cursor: pointer; font-size: 12px; line-height: 1; }
+    #close:hover { background: rgba(255,255,255,0.32); }
+    #original {
+      user-select: text; margin: 10px 12px 0; padding: 8px 11px; max-height: 66px; overflow-y: auto;
+      font-size: 12px; color: #667085; background: #f5f7fc; border: 1px solid #e8ecf6;
+      border-radius: 9px; white-space: pre-wrap; word-break: break-word; line-height: 1.5;
+    }
+    #original:empty { display: none; }
+    #result {
+      flex: 1; padding: 12px 16px; overflow-y: auto; user-select: text;
+      font-size: 17px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+    }
+    #result.err { color: #d92d20; font-size: 13px; line-height: 1.55; }
+    .foot {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border-top: 1px solid #eef1f8; background: #fafbfe;
+    }
+    #meta { font-size: 11px; color: #8a93a6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .spacer { flex: 1; }
+    button.act {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; padding: 5px 12px; border: 1px solid #d9dfec; border-radius: 8px;
+      background: #fff; color: #344054; cursor: pointer; transition: all 0.15s;
+    }
+    button.act:hover { border-color: #8B5CF6; color: #6A5AF9; background: #f8f7ff; }
+    button.act svg { width: 13px; height: 13px; }
+    button.primary { background: linear-gradient(90deg, #4F8CFF, #8B5CF6); border: none; color: #fff; }
+    button.primary:hover { filter: brightness(1.06); background: linear-gradient(90deg, #4F8CFF, #8B5CF6); color: #fff; }
+    .spin {
+      display: inline-block; width: 15px; height: 15px; vertical-align: -3px; margin-right: 7px;
+      border: 2px solid #dbe1f0; border-top-color: #7A5CF5; border-radius: 50%;
+      animation: r 0.75s linear infinite;
+    }
+    @keyframes r { to { transform: rotate(360deg); } }
+    .loading { color: #667085; font-size: 14px; }
+    #toast {
+      position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%);
+      background: #1f2328; color: #fff; font-size: 12px; padding: 5px 14px; border-radius: 999px;
+      opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #d5dbe8; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <svg class="logo" viewBox="0 0 512 512"><rect x="32" y="32" width="448" height="448" rx="112" fill="#fff" opacity="0.25"/><rect x="84" y="112" width="228" height="156" rx="42" fill="#fff"/><path d="M148 258 L148 306 L206 258 Z" fill="#fff"/><text x="198" y="238" text-anchor="middle" font-family="Microsoft YaHei,sans-serif" font-size="104" font-weight="700" fill="#4F46E5">文</text><rect x="240" y="248" width="196" height="140" rx="38" fill="#3B2ED8"/><path d="M372 378 L372 420 L322 378 Z" fill="#3B2ED8"/><text x="338" y="356" text-anchor="middle" font-family="Arial,sans-serif" font-size="98" font-weight="700" fill="#fff">A</text></svg>
+      <span class="brand">划译</span>
+      <span class="badge" id="badge"></span>
+      <button id="close" title="关闭 (Esc)">✕</button>
+    </div>
+    <div id="original"></div>
+    <div id="result"></div>
+    <div class="foot">
+      <span id="meta"></span>
+      <span class="spacer"></span>
+      <button class="act" id="retryBtn" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 2.6-6.3M4 3v5h5"/></svg>重试
+      </button>
+      <button class="act primary" id="copyBtn" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制译文
+      </button>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

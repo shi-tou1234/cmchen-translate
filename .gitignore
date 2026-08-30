@@ -1,0 +1,6 @@
+node_modules/
+release/
+release-builder/
+.mimosa/
+*.log
+TEMP/

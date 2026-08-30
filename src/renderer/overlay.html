@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+    body { cursor: crosshair; position: relative; }
+    #dim { position: absolute; inset: 0; background: rgba(15, 18, 34, 0.28); }
+    #sel {
+      position: absolute; display: none;
+      border: 2px solid #8B5CF6; background: rgba(139, 92, 246, 0.10);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.65) inset;
+    }
+    body.editing #sel { border-color: #4F8CFF; background: rgba(79, 140, 255, 0.08); }
+    .handle {
+      position: absolute; width: 12px; height: 12px; display: none;
+      background: #fff; border: 2px solid #4F8CFF; border-radius: 3px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4); z-index: 5;
+    }
+    .handle.nw { cursor: nwse-resize; } .handle.se { cursor: nwse-resize; }
+    .handle.ne { cursor: nesw-resize; } .handle.sw { cursor: nesw-resize; }
+    .handle.n, .handle.s { cursor: ns-resize; }
+    .handle.e, .handle.w { cursor: ew-resize; }
+    #size {
+      position: absolute; display: none; background: rgba(31, 35, 56, 0.92); color: #fff;
+      font: 12px/1 system-ui, 'Microsoft YaHei', sans-serif; padding: 4px 8px; border-radius: 6px;
+      pointer-events: none; z-index: 6;
+    }
+    #bar {
+      position: absolute; display: none; z-index: 7;
+      background: rgba(31, 35, 56, 0.95); border-radius: 9px; padding: 5px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    #bar button {
+      font: 12px/1 system-ui, 'Microsoft YaHei', sans-serif; color: #e6e9f4;
+      background: transparent; border: none; border-radius: 6px;
+      padding: 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+    }
+    #bar button:hover { background: rgba(255,255,255,0.14); }
+    #bar button.primary { background: linear-gradient(90deg, #4F8CFF, #8B5CF6); color: #fff; font-weight: 600; }
+    #bar button.primary:hover { filter: brightness(1.1); }
+    #bar svg { width: 13px; height: 13px; }
+    #hint {
+      position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+      background: rgba(31, 35, 56, 0.92); color: #fff; font-size: 14px;
+      padding: 9px 20px; border-radius: 999px; transition: opacity 0.5s; pointer-events: none; z-index: 8;
+    }
+  </style>
+</head>
+<body>
+  <div id="dim"></div>
+  <div id="sel"></div>
+  <div id="size"></div>
+  <div id="bar">
+    <button id="btnOk" class="primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 10 18 20 6"/></svg>翻译
+    </button>
+    <button id="btnRedo" title="重新框选">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 2.6-6.3M4 3v5h5"/></svg>重框
+    </button>
+    <button id="btnCancel" title="取消 (Esc)">✕</button>
+  </div>
+  <div id="hint">拖拽框选要识别的区域 · 松开后可拖动手柄微调 · Enter 确认 · Esc 取消</div>
+  <script src="overlay.js"></script>
+</body>
+</html>
