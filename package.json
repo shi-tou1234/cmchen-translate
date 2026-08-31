@@ -46,6 +46,7 @@
       "build/icon.png",
       "package.json"
     ],
+    "artifactName": "cmchen-translate-${version}.${ext}",
     "win": {
       "target": [
         { "target": "nsis", "arch": ["x64"] },
@@ -67,9 +68,6 @@
       "category": "public.app-category.utilities"
     },
     "dmg": {
-      "artifactName": "cmchen-translate-${version}-${arch}.${ext}"
-    },
-    "zip": {
       "artifactName": "cmchen-translate-${version}-${arch}.${ext}"
     },
     "linux": {
