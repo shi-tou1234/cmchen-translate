@@ -66,11 +66,11 @@ if (-not (Test-Path (Join-Path $nm '@koromix\koffi-win32-x64'))) {
 # 4) 桌面快捷方式（图标显式指向已嵌入图标的 exe）
 $ws = New-Object -ComObject WScript.Shell
 $desktop = [Environment]::GetFolderPath('Desktop')
-$lnk = $ws.CreateShortcut((Join-Path $desktop ($exeName + '.lnk')))
+$lnk = $ws.CreateShortcut((Join-Path $desktop '划词翻译.lnk'))
 $lnk.TargetPath = $exe
 $lnk.WorkingDirectory = $rel
 $lnk.IconLocation = ($exe + ',0')
-$lnk.Description = '划译 · 划词翻译'
+$lnk.Description = '划词翻译 - 跨平台划词翻译与截图 OCR 翻译'
 $lnk.Save()
 
 # 5) 清理图标补丁与开发期的临时文件
