@@ -11,7 +11,9 @@
       background: linear-gradient(120deg, #4F8CFF 0%, #6A6EF8 55%, #8B5CF6 100%);
       padding: 18px 22px; display: flex; align-items: center; gap: 13px;
     }
-    .hero img { width: 46px; height: 46px; border-radius: 12px; box-shadow: 0 6px 18px rgba(20, 24, 60, 0.28); }
+    .hero img, .hero .app-icon {
+      width: 46px; height: 46px; border-radius: 12px; box-shadow: 0 6px 18px rgba(20, 24, 60, 0.28); background-size: cover;
+    }
     .hero h1 { color: #fff; font-size: 17px; margin-bottom: 3px; }
     .hero p { color: rgba(255,255,255,0.88); font-size: 12px; line-height: 1.5; }
     .hero code { background: rgba(255,255,255,0.18); padding: 1px 5px; border-radius: 4px; color: #fff; }
@@ -55,7 +57,7 @@
 </head>
 <body>
   <div class="hero">
-    <img src="../build/icons/icon-64.png" alt="划译" />
+    <div class="app-icon" style="background-image: url('../../build/icons/icon-64.png');"></div>
     <div>
       <h1>划译 · 设置</h1>
       <p>任意软件里选中文本后：<code>Alt+Z</code> 或快速连按两次 <code>Ctrl+C</code> 弹出翻译；截图翻译按 <code>Alt+S</code>；「选中自动弹」默认关闭。只能使用 opencode 免费模型。</p>

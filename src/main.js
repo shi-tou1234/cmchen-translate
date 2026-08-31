@@ -252,7 +252,10 @@ function showSettings() {
     title: '划译 · 设置',
     autoHideMenuBar: true,
     icon: trayIcon(),
-    webPreferences: { preload: path.join(__dirname, 'preload-settings.js') }
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-settings.js'),
+      sandbox: false // preload-settings.js 需要 require('node:fs') 读取图标，必须关闭沙盒
+    }
   });
   settingsWin.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
   settingsWin.on('closed', () => (settingsWin = null));

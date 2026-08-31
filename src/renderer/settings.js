@@ -16,6 +16,12 @@ function parseBlacklist(text) {
 }
 
 async function load() {
+  // 通过 preload 读取图标并设置 data URI（sandbox:false 已开启，preload 可用 fs）
+  try {
+    const iconUri = window.huayiSettings.getIconDataUri();
+    const el = document.querySelector('.app-icon');
+    if (el && iconUri) el.style.backgroundImage = 'url(' + iconUri + ')';
+  } catch {}
   const c = await window.huayiSettings.getConfig();
   $('baseUrl').value = c.baseUrl || '';
   $('maxChars').value = c.maxChars || 5000;
