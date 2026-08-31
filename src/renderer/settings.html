@@ -2,76 +2,66 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
   <style>
-    :root { color-scheme: light; }
+    :root { --accent: #6C5CE7; --accent2: #A29BFE; --bg: #0F1014; --card: #1A1C23; --card-hover: #22252E; --text: #E8E9ED; --dim: #8B8D97; --border: rgba(255,255,255,0.06); --input-bg: #22252E; --input-border: rgba(255,255,255,0.08); --radius: 12px; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, 'Microsoft YaHei', sans-serif; color: #1f2328; background: #f2f4fb; font-size: 13px; }
+    body { font-family: -apple-system, 'SF Pro Display', system-ui, 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
     .hero {
-      background: linear-gradient(120deg, #4F8CFF 0%, #6A6EF8 55%, #8B5CF6 100%);
-      padding: 18px 22px; display: flex; align-items: center; gap: 13px;
+      background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #A855F7 100%);
+      padding: 20px 24px; display: flex; align-items: center; gap: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .hero img, .hero .app-icon {
-      width: 46px; height: 46px; border-radius: 12px; box-shadow: 0 6px 18px rgba(20, 24, 60, 0.28); background-size: cover;
+    .hero .app-icon {
+      width: 52px; height: 52px; border-radius: 14px; background-size: cover;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3); flex-shrink: 0;
     }
-    .hero h1 { color: #fff; font-size: 17px; margin-bottom: 3px; }
-    .hero p { color: rgba(255,255,255,0.88); font-size: 12px; line-height: 1.5; }
-    .hero code { background: rgba(255,255,255,0.18); padding: 1px 5px; border-radius: 4px; color: #fff; }
-    main { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 12px; max-width: 700px; }
-    .card { background: #fff; border: 1px solid #e4e8f2; border-radius: 12px; padding: 13px 15px 14px; display: flex; flex-direction: column; gap: 11px;
-            box-shadow: 0 1px 3px rgba(31, 41, 82, 0.05); }
-    .card h2 { font-size: 13px; color: #344054; display: flex; align-items: center; gap: 7px; }
-    .chip { width: 22px; height: 22px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
-    .chip svg { width: 13px; height: 13px; }
-    .chip.c1 { background: #eef3ff; color: #3555e8; }
-    .chip.c2 { background: #f3eeff; color: #7A3BF5; }
-    .chip.c3 { background: #e9f9f0; color: #17994f; }
-    .hint { color: #8a93a6; font-size: 12px; line-height: 1.55; }
-    label.col { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #475467; }
-    label.row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #344054; padding: 2px 0; cursor: pointer; }
-    input[type=text], input[type=password], input[type=number] {
-      font-size: 13px; padding: 7px 10px; border: 1px solid #d8deea; border-radius: 8px; font-family: inherit;
-      outline: none; transition: border 0.15s, box-shadow 0.15s; background: #fff; color: #1f2328;
+    .hero h1 { color: #fff; font-size: 18px; font-weight: 600; margin-bottom: 3px; }
+    .hero p { color: rgba(255,255,255,0.75); font-size: 12px; line-height: 1.55; }
+    .hero code { background: rgba(255,255,255,0.15); padding: 1px 5px; border-radius: 4px; color: #fff; font-size: 11px; }
+    main { padding: 12px 16px 20px; display: flex; flex-direction: column; gap: 10px; max-width: 700px; }
+    .section {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px;
     }
-    input[type=text]:focus, input[type=password]:focus, input[type=number]:focus {
-      border-color: #8B5CF6; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+    .section h2 { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+    label.col { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #C0C2CA; }
+    label.row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text); padding: 3px 0; cursor: pointer; }
+    input[type=text], input[type=password], input[type=number], textarea {
+      font-size: 13px; padding: 8px 11px; border: 1px solid var(--input-border); border-radius: 8px;
+      background: var(--input-bg); color: var(--text); font-family: inherit; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    textarea { font-size: 12.5px; padding: 7px 10px; border: 1px solid #d8deea; border-radius: 8px; font-family: inherit;
-               resize: vertical; min-height: 50px; outline: none; color: #1f2328; }
-    textarea:focus { border-color: #8B5CF6; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15); }
-    input[type=checkbox] { width: 16px; height: 16px; accent-color: #6A5AF9; cursor: pointer; }
+    input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,92,231,0.2); }
+    textarea { resize: vertical; min-height: 52px; }
+    input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
     .actions { display: flex; align-items: center; gap: 12px; }
-    button { font-size: 13px; padding: 7px 16px; border: 1px solid #d8deea; border-radius: 9px; background: #fff; cursor: pointer; color: #344054; }
-    button:hover { border-color: #b9c2d8; }
-    button.primary {
-      background: linear-gradient(90deg, #4F8CFF, #8B5CF6); border: none; color: #fff; font-weight: 600;
-      padding: 8px 26px; box-shadow: 0 4px 14px rgba(106, 90, 249, 0.35); transition: transform 0.12s, filter 0.12s;
-    }
-    button.primary:hover { filter: brightness(1.07); transform: translateY(-1px); }
-    #msg { font-size: 12px; min-height: 16px; }
-    #msg.ok { color: #17994f; }
-    #msg.err { color: #d92d20; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .inline { display: flex; gap: 8px; align-items: center; }
+    button { font-size: 13px; padding: 8px 18px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: var(--card); color: var(--text); cursor: pointer; transition: all 0.15s; }
+    button:hover { background: var(--card-hover); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; box-shadow: 0 4px 16px rgba(108,92,231,0.3); }
+    button.primary:hover { background: #7C6EF0; transform: translateY(-1px); }
+    #msg { font-size: 12px; min-height: 16px; transition: color 0.2s; }
+    #msg.ok { color: #66BB6A; }
+    #msg.err { color: #EF5350; }
   </style>
 </head>
 <body>
   <div class="hero">
-    <div class="app-icon" style="background-image: url('../../build/icons/icon-64.png');"></div>
+    <div class="app-icon" id="appIcon"></div>
     <div>
       <h1>划译 · 设置</h1>
       <p>任意软件里选中文本后：<code>Alt+Z</code> 或快速连按两次 <code>Ctrl+C</code> 弹出翻译；截图翻译按 <code>Alt+S</code>；「选中自动弹」默认关闭。只能使用 opencode 免费模型。</p>
     </div>
   </div>
   <main>
-    <div class="card">
-      <h2><span class="chip c1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v13M6 10l6-7 6 7M4 21h16"/></svg></span>翻译服务（opencode 免费模型）</h2>
+    <div class="section">
+      <h2>翻译服务（opencode 免费模型）</h2>
       <label class="col">服务地址
         <input type="text" id="baseUrl" placeholder="https://opencode.ai/zen/v1" />
       </label>
       <label class="col">模型（可下拉选择，也可直接输入任意免费模型名）
-        <div class="inline">
-          <input type="text" id="model" list="modelList" placeholder="输入或选择模型名" style="flex:1" />
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="model" list="modelList" placeholder="输入或选择模型名" style="flex:1;" />
           <datalist id="modelList"></datalist>
           <button id="refreshModels" type="button">刷新列表</button>
         </div>
@@ -84,10 +74,10 @@
       </label>
     </div>
 
-    <div class="card">
-      <h2><span class="chip c2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 13.5H11L9.5 22 19 9.5h-6.5L13 2z"/></svg></span>触发方式</h2>
+    <div class="section">
+      <h2>触发方式</h2>
       <label class="row"><input type="checkbox" id="hotkeyEnabled" /> 选中文本后按快捷键翻译</label>
-      <label class="row">快捷键 <input type="text" id="hotkey" style="width:110px" /> <span class="hint">如 Alt+Z</span></label>
+      <label class="row">快捷键 <input type="text" id="hotkey" style="width:120px" /> <span style="color:var(--dim);font-size:12px;">如 Alt+Z</span></label>
       <label class="row"><input type="checkbox" id="doubleCopyEnabled" /> 选中后快速连按两次 Ctrl+C 翻译</label>
       <label class="row"><input type="checkbox" id="autoPopupEnabled" /> 选中文字自动弹窗（拖选或双击后）</label>
       <label class="row"><input type="checkbox" id="ocrEnabled" /> 截图翻译（框选屏幕区域，识别图中文字并翻译，快捷键 Alt+S）</label>
@@ -96,8 +86,8 @@
       </label>
     </div>
 
-    <div class="card">
-      <h2><span class="chip c3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>其他</h2>
+    <div class="section">
+      <h2>其他</h2>
       <label class="row"><input type="checkbox" id="autoStart" /> 开机自动启动</label>
     </div>
 

@@ -9,23 +9,23 @@ function showMsg(text, ok) {
 }
 
 function parseBlacklist(text) {
-  return String(text || '')
-    .split(/[,\n，]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  return String(text || '').split(/[,\n，]/).map((s) => s.trim()).filter(Boolean);
 }
 
 async function load() {
-  // 通过 preload 读取图标并设置 data URI（sandbox:false 已开启，preload 可用 fs）
+  // 图标 data URI（sandbox=false 时 preload 可用 fs）
   try {
     const iconUri = window.huayiSettings.getIconDataUri();
-    const el = document.querySelector('.app-icon');
-    if (el && iconUri) el.style.backgroundImage = 'url(' + iconUri + ')';
+    if (iconUri) {
+      const el = document.getElementById('appIcon');
+      if (el) el.style.backgroundImage = 'url(' + iconUri + ')';
+    }
   } catch {}
   const c = await window.huayiSettings.getConfig();
   $('baseUrl').value = c.baseUrl || '';
+  $('model').value = c.model || '';
   $('maxChars').value = c.maxChars || 5000;
-  $('hotkey').value = c.hotkey || 'Alt+Q';
+  $('hotkey').value = c.hotkey || 'Alt+Z';
   $('hotkeyEnabled').checked = !!c.hotkeyEnabled;
   $('doubleCopyEnabled').checked = !!c.doubleCopyEnabled;
   $('autoPopupEnabled').checked = !!c.autoPopupEnabled;
@@ -35,9 +35,6 @@ async function load() {
   $('apiKey').placeholder = c.apiKeySet
     ? '已手填（留空保存 = 保持不变）'
     : '留空则自动读取 opencode 的 opencode-go key';
-
-  const input = $('model');
-  input.value = c.model || '';
   refreshModels();
 }
 
@@ -50,10 +47,9 @@ async function refreshModels() {
     showMsg('获取模型列表失败：' + r.error + '（仍可直接输入模型名）', false);
     return;
   }
-  // 当前使用的模型排最前，其余去重；输入框保留自由输入能力
-  const ids = [current, ...r.ids.filter((id) => id !== current)].filter(Boolean);
   const dl = $('modelList');
   dl.innerHTML = '';
+  const ids = [current, ...r.ids.filter((id) => id !== current)].filter(Boolean);
   for (const id of ids) {
     const o = document.createElement('option');
     o.value = id;
@@ -66,7 +62,7 @@ async function save() {
   const next = {
     baseUrl: $('baseUrl').value.trim(),
     model: $('model').value.trim(),
-    apiKey: $('apiKey').value, // 空 = 不改动；主进程决定语义
+    apiKey: $('apiKey').value,
     hotkey: $('hotkey').value.trim(),
     hotkeyEnabled: $('hotkeyEnabled').checked,
     doubleCopyEnabled: $('doubleCopyEnabled').checked,
