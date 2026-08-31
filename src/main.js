@@ -100,6 +100,15 @@ app.whenReady().then(() => {
     registerHotkey();
     applyAutoStart();
     wireIpc();
+    // 启动提示：用托盘气泡通知告知用户快捷键和基本操作
+    setTimeout(() => {
+      if (tray && tray.displayBalloon) {
+        tray.displayBalloon({
+          title: '划译已启动',
+          content: '选中文字按 Alt+Q 翻译，Alt+S 截图翻译。\n右键托盘图标可切换模型、打开设置。'
+        });
+      }
+    }, 1500);
   } catch (err) {
     dialog.showErrorBox('划译启动失败', String((err && err.message) || err));
     app.quit();

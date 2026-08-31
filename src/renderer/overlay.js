@@ -168,26 +168,34 @@ function applyResize(x, y) {
 
 function onDown(e) {
   if (e.button !== 0) return;
-  e.preventDefault();
   const x = e.clientX;
   const y = e.clientY;
+
+  // 画框模式：只处理纯画框，点击工具条/手柄不启动画框
   if (mode === 'draw') {
+    if (e.target.closest('#bar') || e.target.closest('.handle')) return;
+    e.preventDefault();
     enterDraw(x, y);
     return;
   }
-  // edit 模式：手柄 > 框内移动 > 框外重新画
+
+  // 编辑模式：手柄拖动 > 工具条按钮（放行 click） > 框内移动 > 框外重画
   const h = handleAt(x, y);
   if (h) {
+    e.preventDefault();
     dragKind = 'resize';
     activeHandle = h;
     resizeBase = { ...rect };
     return;
   }
+  if (e.target.closest('#bar')) return; // 工具条点击交给浏览器原生处理（按钮 click）
   if (insideRect(x, y)) {
+    e.preventDefault();
     dragKind = 'move';
     moveOffset = { x: x - rect.x, y: y - rect.y };
     return;
   }
+  e.preventDefault();
   enterDraw(x, y);
 }
 
