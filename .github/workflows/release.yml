@@ -19,9 +19,6 @@ jobs:
           - os: macos-latest
             name: macos-arm64
             targets: --mac dmg zip --arm64
-          - os: macos-13
-            name: macos-x64
-            targets: --mac dmg zip --x64
           - os: ubuntu-latest
             name: linux
             targets: --linux AppImage deb
