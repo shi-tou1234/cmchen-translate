@@ -62,35 +62,18 @@
       "artifactName": "cmchen-translate-portable-${version}.${ext}"
     },
     "mac": {
-      "target": [
-        { "target": "dmg", "arch": "x64" },
-        { "target": "dmg", "arch": "arm64" },
-        { "target": "zip", "arch": "x64" },
-        { "target": "zip", "arch": "arm64" }
-      ],
+      "target": ["dmg", "zip"],
       "icon": "build/icon.png",
-      "category": "public.app-category.utilities",
-      "hardenedRuntime": false,
-      "notarize": false
+      "category": "public.app-category.utilities"
     },
     "dmg": {
       "artifactName": "cmchen-translate-${version}-${arch}.${ext}"
     },
     "linux": {
-      "target": [
-        { "target": "AppImage", "arch": ["x64"] },
-        { "target": "deb", "arch": ["x64"] }
-      ],
+      "target": ["AppImage", "deb"],
       "icon": "build/icons",
       "category": "Utility",
-      "executableName": "cmchen-translate",
-      "desktop": {
-        "Name": "划译 · 翻译工具",
-        "Comment": "跨平台划词翻译与截图 OCR 翻译",
-        "Terminal": "false",
-        "Type": "Application",
-        "Categories": "Utility"
-      }
+      "executableName": "cmchen-translate"
     },
     "appImage": {
       "artifactName": "cmchen-translate-${version}.${ext}"
