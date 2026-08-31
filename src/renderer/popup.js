@@ -13,10 +13,13 @@ const toastEl = document.getElementById('toast');
 
 let currentTranslated = '';
 
+let toastTimer = null;
+
 function toast(msg) {
   toastEl.textContent = msg;
   toastEl.style.opacity = '1';
-  setTimeout(() => (toastEl.style.opacity = '0'), 1200);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (toastEl.style.opacity = '0'), 1200);
 }
 
 window.huayi.onPending((d) => {

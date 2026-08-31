@@ -118,6 +118,7 @@ async function translateText(opts) {
     timeoutMs = 30000,
     fetchImpl = globalThis.fetch
   } = opts || {};
+  const doFetch = fetchImpl || globalThis.fetch; // 显式传 undefined 也不失守
   const check = isPublicHttpUrl(baseUrl);
   if (!check.ok) throw new Error('翻译服务地址被拒绝：' + check.reason);
   if (!apiKey) throw new Error('缺少 API key，请先在设置中配置');
@@ -127,7 +128,7 @@ async function translateText(opts) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetchImpl(baseUrl.replace(/\/+$/, '') + '/chat/completions', {
+    const res = await doFetch(baseUrl.replace(/\/+$/, '') + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -177,13 +178,14 @@ async function listModels(opts) {
     timeoutMs = 15000,
     fetchImpl = globalThis.fetch
   } = opts || {};
+  const doFetch = fetchImpl || globalThis.fetch;
   const check = isPublicHttpUrl(baseUrl);
   if (!check.ok) throw new Error('翻译服务地址被拒绝：' + check.reason);
   if (!apiKey) throw new Error('缺少 API key');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetchImpl(baseUrl.replace(/\/+$/, '') + '/models', {
+    const res = await doFetch(baseUrl.replace(/\/+$/, '') + '/models', {
       headers: { Authorization: 'Bearer ' + apiKey },
       signal: controller.signal
     });

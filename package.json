@@ -1,8 +1,8 @@
 {
-  "name": "huayi",
+  "name": "cmchen-translate",
   "version": "1.0.0",
   "private": true,
-  "description": "划译 - Windows 划词翻译工具",
+  "description": "跨平台划词翻译 + 截图 OCR 翻译（Electron，支持 Windows/macOS/Linux）",
   "main": "src/main.js",
   "imports": {
     "#lib/*": "./src/lib/*"
@@ -12,10 +12,14 @@
     "test": "node --test \"tests/*.test.js\"",
     "e2e": "node scripts/e2e-gateway.js",
     "deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy.ps1",
-    "verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1"
+    "verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+    "stage:tessdata": "node scripts/stage-tessdata.js"
   },
   "dependencies": {
+    "@tesseract.js-data/chi_sim": "^1.0.0",
+    "@tesseract.js-data/eng": "^1.0.0",
     "koffi": "3.1.6",
+    "tesseract.js": "7.0.0",
     "uiohook-napi": "1.5.5"
   },
   "devDependencies": {
@@ -23,34 +27,77 @@
     "electron-builder": "^26.15.3"
   },
   "build": {
-    "appId": "com.huayi.translate",
+    "appId": "com.cmchen.translate",
     "productName": "划译",
     "directories": {
       "output": "release-builder",
       "buildResources": "build"
     },
-    "electronDist": "node_modules/electron/dist",
     "npmRebuild": false,
-    "files": [
-      "src/**/*",
-      "scripts/ocr.ps1",
-      "build/**",
-      "package.json"
-    ],
     "asarUnpack": [
       "scripts/**"
     ],
+    "files": [
+      "src/**/*",
+      "scripts/ocr.ps1",
+      "scripts/stage-tessdata.js",
+      "build/tessdata/**",
+      "build/icon.ico",
+      "build/icon.png",
+      "package.json"
+    ],
     "win": {
-      "icon": "build/icon.ico",
       "target": [
-        {
-          "target": "portable",
-          "arch": ["x64"]
-        }
-      ]
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "cmchen-translate-setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "划译.exe"
+      "artifactName": "cmchen-translate-portable-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": "x64" },
+        { "target": "dmg", "arch": "arm64" },
+        { "target": "zip", "arch": "x64" },
+        { "target": "zip", "arch": "arm64" }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": false,
+      "notarize": false
+    },
+    "dmg": {
+      "artifactName": "cmchen-translate-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "icon": "build/icons",
+      "category": "Utility",
+      "executableName": "cmchen-translate",
+      "desktop": {
+        "Name": "划译 · 翻译工具",
+        "Comment": "跨平台划词翻译与截图 OCR 翻译",
+        "Terminal": "false",
+        "Type": "Application",
+        "Categories": "Utility"
+      }
+    },
+    "appImage": {
+      "artifactName": "cmchen-translate-${version}.${ext}"
+    },
+    "deb": {
+      "artifactName": "cmchen-translate-${version}.${ext}"
     }
-  }
+  },
+  "author": "cmchen"
 }

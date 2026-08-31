@@ -13,7 +13,7 @@ const btnOk = document.getElementById('btnOk');
 const btnRedo = document.getElementById('btnRedo');
 const btnCancel = document.getElementById('btnCancel');
 
-const MIN_SIZE = 4; // 松手时小于该值视为误触（像素）
+const MIN_SIZE = 8; // 与主进程 isValidSelectionRect 的最小阈值一致
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 let mode = 'draw'; // 'draw' | 'edit'
@@ -138,7 +138,7 @@ function insideRect(x, y) {
 }
 
 function applyResize(x, y) {
-  // 固定边锚定在按下时的原始矩形，避免拖动中边缘漂移
+  // 固定边锚定在按下时的原始矩形，避免拖动中边缘漂移；宽高不低于 MIN_SIZE
   const b = resizeBase;
   let x1 = b.x;
   let y1 = b.y;
@@ -148,6 +148,16 @@ function applyResize(x, y) {
   if (activeHandle.includes('e')) x2 = x;
   if (activeHandle.includes('n')) y1 = y;
   if (activeHandle.includes('s')) y2 = y;
+  if (Math.abs(x2 - x1) < MIN_SIZE) {
+    const mid = (x1 + x2) / 2;
+    x1 = mid - MIN_SIZE / 2;
+    x2 = mid + MIN_SIZE / 2;
+  }
+  if (Math.abs(y2 - y1) < MIN_SIZE) {
+    const mid = (y1 + y2) / 2;
+    y1 = mid - MIN_SIZE / 2;
+    y2 = mid + MIN_SIZE / 2;
+  }
   rect = {
     x: Math.min(x1, x2),
     y: Math.min(y1, y2),
@@ -186,15 +196,17 @@ function onMove(e) {
   const x = e.clientX;
   const y = e.clientY;
   if (dragKind === 'draw') {
-    rect = {
+    rect = clampRect({
       x: Math.min(anchor.x, x),
       y: Math.min(anchor.y, y),
       width: Math.abs(x - anchor.x),
       height: Math.abs(y - anchor.y)
-    };
+    });
     render();
   } else if (dragKind === 'resize') {
     applyResize(x, y);
+    rect = clampRect(rect);
+    render();
   } else if (dragKind === 'move') {
     rect = clampRect({
       x: x - moveOffset.x,
@@ -234,5 +246,14 @@ document.addEventListener('keydown', (e) => {
 });
 
 btnOk.addEventListener('click', () => confirmSelection());
-btnRedo.addEventListener('click', () => { barEl.style.display = 'none'; selEl.style.display = 'none'; sizeEl.style.display = 'none'; mode = 'draw'; });
+btnRedo.addEventListener('click', () => {
+  barEl.style.display = 'none';
+  selEl.style.display = 'none';
+  sizeEl.style.display = 'none';
+  dragKind = null;
+  activeHandle = 'se';
+  resizeBase = { ...rect };
+  rect = { x: 0, y: 0, width: 0, height: 0 };
+  mode = 'draw';
+});
 btnCancel.addEventListener('click', () => cancelAll());

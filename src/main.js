@@ -13,7 +13,8 @@ const { pickCopiedText, shouldTranslate, pickCopiedTextBySequence, truncateForTr
 const { translateText, listModels, isPublicHttpUrl, friendlyError, dedupeModels, freeModelsOnly } = require('#lib/gateway.js');
 const { loadConfig, saveConfig, resolveApiKey, mergeDefaults } = require('#lib/config.js');
 const { buildIcon } = require('#lib/icon.js');
-const native = require('#lib/native.js');
+const native = require('#lib/platform.js');
+const { recognizeText: recognizeTesseract } = require('#lib/tesseractOcr.js');
 const { uIOhook, UiohookKey } = require('uiohook-napi');
 
 // 调试日志：%APPDATA%\划译\log.txt（只记划译自身行为，不记 key、不记剪贴板内容）
@@ -32,7 +33,14 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
 
-let config = loadConfig();
+// 配置加载：文件损坏时给出可行动提示并用默认值启动，不让应用起不来
+let config = null;
+try {
+  config = loadConfig();
+} catch (err) {
+  debugLog('config load error: ' + ((err && err.message) || err));
+  config = mergeDefaults({});
+}
 let enabled = true; // 托盘总开关（会话级，不落盘）
 let tray = null;
 let popup = null;
@@ -283,28 +291,29 @@ async function readClipboardText() {
   return String((await clipboard.readText()) || '').trim();
 }
 
-// 模拟 Ctrl+C 前先备份剪贴板文本，用剪贴板序列号判定「真的复制了」（与内容是否变化无关），
-// 拿到新文本后立刻恢复用户剪贴板。
-// v1 局限：只备份/恢复文本；剪贴板里原本是图片/文件时无法还原（见 PROGRESS.md）。
+// 模拟 Ctrl+C 前先备份剪贴板文本；用剪贴板序列号判定「真的复制了」。
+// 恢复旧剪贴板前再查一次序列号：若用户在轮询期间又复制了新内容，则保留用户的，
+// 不覆盖（v1 只备份/恢复文本；原本是图片/文件时无法还原，见 PROGRESS.md）。
 async function copySelectionViaKeys() {
-  const seqBefore = native.clipboardSequence();
+  const seqAvailable = typeof native.clipboardSequence === 'function';
+  const seqBefore = seqAvailable ? native.clipboardSequence() : null;
   const before = await readClipboardText();
   native.sendCtrlC();
   let after = null;
   let seqChanged = false;
   for (let i = 0; i < COPY_POLL_TIMES; i++) {
     await new Promise((r) => setTimeout(r, COPY_POLL_MS));
-    if (!seqChanged && native.clipboardSequence() !== seqBefore) seqChanged = true;
-    if (seqChanged) {
-      const cur = await readClipboardText();
-      if (cur) {
-        after = cur;
-        break;
-      }
+    const cur = await readClipboardText();
+    if (!seqChanged && seqAvailable && native.clipboardSequence() !== seqBefore) seqChanged = true;
+    if (!seqChanged && !seqAvailable && cur && cur !== before) seqChanged = true;
+    if (seqChanged && cur) {
+      after = cur;
+      break;
     }
   }
-  await clipboard.writeText(before);
-  return pickCopiedTextBySequence(before, after, seqChanged);
+  const stillSameSeq = !seqAvailable || native.clipboardSequence() === seqBefore;
+  if (stillSameSeq) await clipboard.writeText(before);
+  return seqChanged && after ? after : null;
 }
 
 function isForegroundBlacklisted() {
@@ -345,7 +354,13 @@ async function translateAndShow(originalText) {
   const win = ensurePopup();
   positionPopupAtCursor(win);
   pending = true;
-  win.webContents.send('huayi:pending', { original: text, truncated, model: config.model });
+  // 首次创建弹窗时页面还没加载完：等 did-finish-load 再发事件，避免 pending 丢失
+  const payload = { original: text, truncated, model: config.model };
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', () => win.webContents.send('huayi:pending', payload));
+  } else {
+    win.webContents.send('huayi:pending', payload);
+  }
   win.showInactive(); // 不抢焦点：不打断用户当前的打字/操作
 
   const started = Date.now();
@@ -384,6 +399,10 @@ function needsHook() {
 
 function startHook() {
   if (hookStarted) return;
+  // 重启钩子时强制清零修饰键状态，防止上一次会话留下的 stale 标志导致误判
+  ctrlDown = false;
+  altDown = false;
+  shiftDown = false;
   uIOhook.on('mousedown', (e) => {
     // 轻活：弹窗未聚焦模式下，点击弹窗外部即收起（getBounds 是同步轻调用）
     if (popup && popup.isVisible()) {
@@ -447,7 +466,18 @@ function startHook() {
     if (e.keycode === UiohookKey.Alt) altDown = false;
     if (e.keycode === UiohookKey.Shift) shiftDown = false;
   });
-  uIOhook.start();
+  try {
+    uIOhook.start();
+  } catch (err) {
+    // 启动失败（权限/环境限制）：清掉刚注册的监听器，避免下次重试重复触发
+    try {
+      uIOhook.removeAllListeners();
+    } catch {}
+    hookStarted = false;
+    debugLog('uIOhook.start failed: ' + ((err && err.message) || err));
+    notify('全局钩子启动失败', '划词取词与截图框选不可用，但快捷键触发的翻译仍可工作');
+    return;
+  }
   hookStarted = true;
 }
 
@@ -455,6 +485,7 @@ function stopHook() {
   if (!hookStarted) return;
   try {
     uIOhook.stop();
+    uIOhook.removeAllListeners();
   } catch {}
   hookStarted = false;
   ctrlDown = false;
@@ -521,7 +552,7 @@ function startOcrSelection() {
   const cursor = screen.getCursorScreenPoint();
   const display = screen.getDisplayNearestPoint(cursor);
   const { x, y, width, height } = display.bounds;
-  overlay = new BrowserWindow({
+  const win = new BrowserWindow({
     x, y, width, height,
     frame: false,
     transparent: true,
@@ -535,9 +566,13 @@ function startOcrSelection() {
     hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload-overlay.js') }
   });
-  overlay.setAlwaysOnTop(true, 'screen-saver');
-  overlay.loadFile(path.join(__dirname, 'renderer', 'overlay.html'));
-  overlay.on('closed', () => (overlay = null));
+  overlay = win;
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.loadFile(path.join(__dirname, 'renderer', 'overlay.html'));
+  // 闭包捕获：旧窗口的 closed 事件不能清掉后来新创建的 overlay 引用
+  win.on('closed', () => {
+    if (overlay === win) overlay = null;
+  });
 }
 
 function closeOverlay() {
@@ -622,12 +657,17 @@ async function handleOcrRect(rect) {
       source = await capture(Math.round(display.size.width), Math.round(display.size.height));
     }
     debugLog('captured ok');
-    const cropped = source.thumbnail.crop({
-      x: Math.max(0, pixRect.x),
-      y: Math.max(0, pixRect.y),
-      width: pixRect.width,
-      height: pixRect.height
-    });
+    // 裁剪区钳制在缩略图边界内（负坐标/超宽高会被 clamp，避免 crop 越界）
+    const capSize = source.thumbnail.getSize();
+    const cx = Math.max(0, Math.min(pixRect.x, capSize.width - 1));
+    const cy = Math.max(0, Math.min(pixRect.y, capSize.height - 1));
+    const cw = Math.max(1, Math.min(pixRect.width, capSize.width - cx));
+    const ch = Math.max(1, Math.min(pixRect.height, capSize.height - cy));
+    if (cw < 2 || ch < 2) {
+      notify('截图翻译', '选区太小，请框选更大一些的区域');
+      return;
+    }
+    const cropped = source.thumbnail.crop({ x: cx, y: cy, width: cw, height: ch });
     // 临时截图：固定目录 + 路径边界校验，用完即删（仅动自己生成的临时文件）
     const tmpDir = path.resolve(app.getPath('temp'), 'huayi-ocr');
     fs.mkdirSync(tmpDir, { recursive: true });
@@ -636,7 +676,13 @@ async function handleOcrRect(rect) {
     fs.writeFileSync(tmp, cropped.toPNG());
     let text = '';
     try {
-      text = await runOcr(tmp);
+      // Windows 用系统 WinRT OCR（离线、快）；macOS/Linux 用随包 Tesseract WASM
+      if (process.platform === 'win32') {
+        text = await runOcr(tmp);
+      } else {
+        const langPath = path.join(app.getAppPath(), 'build', 'tessdata');
+        text = await recognizeTesseract(tmp, { langPath });
+      }
       debugLog('ocr raw len=' + text.length);
     } finally {
       cleanupOcrTemp(); // 识别完成即清理截图等临时产物
@@ -709,9 +755,14 @@ function wireIpc() {
     } catch (err) {
       return { ok: false, error: '保存失败：' + ((err && err.message) || err) };
     }
-    registerHotkey();
-    syncHook();
-    applyAutoStart();
+    // 应用配置：任一环节失败都不卡死设置页，返回具体错误（配置本身已落盘）
+    try {
+      registerHotkey();
+      syncHook();
+      applyAutoStart();
+    } catch (err) {
+      return { ok: false, error: '配置已保存但生效失败：' + ((err && err.message) || err) };
+    }
     return { ok: true };
   });
   ipcMain.handle('huayi:list-models', async () => {
