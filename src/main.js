@@ -11,7 +11,7 @@ const path = require('node:path');
 const { SelectionDetector, matchesBlacklist, parseHotkey, hotkeyMatches, normalizeRect, isValidSelectionRect, scaleRect } = require('#lib/selection.js');
 const { pickCopiedText, shouldTranslate, pickCopiedTextBySequence, truncateForTranslate, cleanupOcrText } = require('#lib/clipboardGuard.js');
 const { translateText, listModels, isPublicHttpUrl, friendlyError, dedupeModels, freeModelsOnly } = require('#lib/gateway.js');
-const { loadConfig, saveConfig, resolveApiKey, mergeDefaults } = require('#lib/config.js');
+const { loadConfig, saveConfig, resolveApiKey, mergeDefaults, FALLBACK_MODELS } = require('#lib/config.js');
 const { buildIcon } = require('#lib/icon.js');
 const native = require('#lib/platform.js');
 const { recognizeText: recognizeTesseract } = require('#lib/tesseractOcr.js');
@@ -40,6 +40,11 @@ try {
 } catch (err) {
   debugLog('config load error: ' + ((err && err.message) || err));
   config = mergeDefaults({});
+}
+// 升级迁移：旧版本快捷键是 Alt+Q，新版本改为 Alt+Z
+if (config.hotkey === 'Alt+Q') {
+  config.hotkey = 'Alt+Z';
+  try { saveConfig(config); } catch {}
 }
 let enabled = true; // 托盘总开关（会话级，不落盘）
 let tray = null;
@@ -364,19 +369,18 @@ async function translateAndShow(originalText) {
   const win = ensurePopup();
   positionPopupAtCursor(win);
   pending = true;
-  // 首次创建弹窗时页面还没加载完：等 did-finish-load 再发事件，避免 pending 丢失
   const payload = { original: text, truncated, model: config.model };
   if (win.webContents.isLoading()) {
     win.webContents.once('did-finish-load', () => win.webContents.send('huayi:pending', payload));
   } else {
     win.webContents.send('huayi:pending', payload);
   }
-  win.showInactive(); // 不抢焦点：不打断用户当前的打字/操作
+  win.showInactive();
 
   const started = Date.now();
   try {
     const apiKey = await resolveApiKey(config);
-    const translated = await translateText({
+    const translated = await translateWithFallback({
       baseUrl: config.baseUrl,
       apiKey,
       model: config.model,
@@ -385,9 +389,10 @@ async function translateAndShow(originalText) {
     win.webContents.send('huayi:result', {
       ok: true,
       original: text,
-      translated,
+      translated: translated.text,
       ms: Date.now() - started,
-      model: config.model
+      model: translated.model,
+      switched: translated.switched // 弹窗里显示"模型已切换为 XXX"提示
     });
   } catch (err) {
     debugLog('translate error: ' + ((err && err.message) || err));
@@ -400,6 +405,34 @@ async function translateAndShow(originalText) {
   } finally {
     pending = false;
   }
+}
+
+// 翻译网关调用，失败时自动切换候选模型重试
+// 返回 { text, model, switched } — switched 表示是否切换了模型（用于弹窗提示用户）
+async function translateWithFallback(opts) {
+  const { baseUrl, apiKey, text, model: primaryModel } = opts;
+  const models = [primaryModel, ...FALLBACK_MODELS.filter((m) => m !== primaryModel)];
+  let lastErr = null;
+  for (const model of models) {
+    try {
+      const translated = await translateText({ baseUrl, apiKey, model, text });
+      const switched = model !== primaryModel;
+      if (switched) {
+        debugLog('model fallback: ' + primaryModel + ' -> ' + model);
+        // 记住能用的模型，后续优先使用
+        config.model = model;
+        try { saveConfig(config); } catch {}
+      }
+      return { text: translated, model, switched };
+    } catch (err) {
+      const msg = String((err && err.message) || err);
+      const transient = /429|503|502|fetch failed|超时|rate limit/i.test(msg);
+      debugLog('translate failed on ' + model + ': ' + msg + (transient ? ' (transient, try next)' : ' (permanent, stop)'));
+      if (!transient) throw err; // 非瞬态错误（如 401 认证失败）直接抛出
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('所有翻译模型均不可用');
 }
 
 // ---------- 全局钩子 ----------
@@ -785,12 +818,20 @@ function wireIpc() {
     return { ok: true };
   });
   ipcMain.handle('huayi:list-models', async () => {
-    try {
-      const apiKey = await resolveApiKey(config);
-      const ids = await listModels({ baseUrl: config.baseUrl, apiKey });
-      return { ok: true, ids: dedupeModels(freeModelsOnly(ids), config.model) };
-    } catch (err) {
-      return { ok: false, error: String((err && err.message) || err) };
+    // 重试逻辑：模型列表拉取偶发失败（限流/网络抖动），最多重试 2 次
+    let lastErr = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const apiKey = await resolveApiKey(config);
+        const ids = await listModels({ baseUrl: config.baseUrl, apiKey });
+        return { ok: true, ids: dedupeModels(freeModelsOnly(ids), config.model) };
+      } catch (err) {
+        const msg = String((err && err.message) || err);
+        debugLog('listModels attempt ' + attempt + ' failed: ' + msg);
+        lastErr = err;
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+      }
     }
+    return { ok: false, error: String((lastErr && lastErr.message) || lastErr) };
   });
 }

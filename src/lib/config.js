@@ -8,6 +8,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { readOpencodeKey } = require('#lib/authJson.js');
 
+// 免费模型限流时的回退候选（按优先级排列）
+const FALLBACK_MODELS = ['laguna-s-2.1-free', 'mimo-v2.5-free', 'nemotron-3.5-lightning-free'];
+
 // 领导拍板：只能使用 opencode 的免费模型（模型 id 以 -free 结尾）
 const FREE_MODEL_SUFFIX = '-free';
 
@@ -95,4 +98,4 @@ function resolveApiKey(config) {
   return readOpencodeKey();
 }
 
-module.exports = { DEFAULTS, defaultConfigDir, defaultConfigPath, mergeDefaults, loadConfig, saveConfig, resolveApiKey };
+module.exports = { DEFAULTS, FALLBACK_MODELS, defaultConfigDir, defaultConfigPath, mergeDefaults, loadConfig, saveConfig, resolveApiKey };

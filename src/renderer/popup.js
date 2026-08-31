@@ -12,14 +12,24 @@ const closeBtn = document.getElementById('close');
 const toastEl = document.getElementById('toast');
 
 let currentTranslated = '';
-
+let switchedModelBanner = null;
 let toastTimer = null;
 
 function toast(msg) {
   toastEl.textContent = msg;
   toastEl.style.opacity = '1';
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (toastEl.style.opacity = '0'), 1200);
+  toastTimer = setTimeout(() => (toastEl.style.opacity = '0'), 1800);
+}
+
+function showSwitchBanner(newModel) {
+  if (switchedModelBanner) switchedModelBanner.remove();
+  switchedModelBanner = document.createElement('div');
+  switchedModelBanner.style.cssText = 'background:#fef3c7;border:1px solid #f59e0b;color:#92400e;font-size:12px;padding:4px 10px;border-radius:6px;margin:0 12px 6px;animation:pop-in 0.18s ease-out;';
+  switchedModelBanner.textContent = '原模型限流，已自动切换为 ' + newModel;
+  const head = document.querySelector('.head');
+  if (head && head.parentNode) head.parentNode.insertBefore(switchedModelBanner, head.nextSibling);
+  setTimeout(() => { if (switchedModelBanner) { switchedModelBanner.remove(); switchedModelBanner = null; } }, 5000);
 }
 
 window.huayi.onPending((d) => {
@@ -40,6 +50,7 @@ window.huayi.onResult((d) => {
     currentTranslated = d.translated;
     copyBtn.hidden = false;
     metaEl.textContent = [d.model, d.ms != null ? d.ms + 'ms' : null].filter(Boolean).join(' · ');
+    if (d.switched) showSwitchBanner(d.model);
   } else {
     resultEl.className = 'err';
     resultEl.textContent = '翻译失败：' + d.error;
