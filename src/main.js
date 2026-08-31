@@ -60,6 +60,7 @@ let cachedModels = []; // 网关模型列表缓存（托盘「选择模型」子
 let modelsLoading = false;
 let overlay = null; // 截图框选覆盖层
 let ocrBusy = false;
+let ocrCapture = null; // 预截屏缓存 { source, display, scaleFactor }，消除 overlay 隐藏→截屏的时序竞争
 let quitting = false;
 
 // keycode → 小写字母/数字（仅 A-Z 0-9，热键兜底判定用）
@@ -105,7 +106,7 @@ app.whenReady().then(() => {
       if (tray && tray.displayBalloon) {
         tray.displayBalloon({
           title: '划译已启动',
-          content: '选中文字按 Alt+Q 翻译，Alt+S 截图翻译。\n右键托盘图标可切换模型、打开设置。'
+          content: '选中文字按 Alt+Z 翻译，Alt+S 截图翻译。\n右键托盘图标可切换模型、打开设置。'
         });
       }
     }, 1500);
@@ -556,10 +557,41 @@ function cleanupOcrTemp() {
   } catch {}
 }
 
-function startOcrSelection() {
+async function startOcrSelection() {
   if (!config.ocrEnabled || overlay) return;
+  // 预截屏：在覆盖层出现之前把屏幕内容截好存着
+  // 这样用户框选完直接裁剪预存图，消除覆盖层→截屏的时序竞争
   const cursor = screen.getCursorScreenPoint();
   const display = screen.getDisplayNearestPoint(cursor);
+  const scaleFactor = display.scaleFactor > 0 ? display.scaleFactor : 1;
+  const pw = Math.round(display.size.width * scaleFactor);
+  const ph = Math.round(display.size.height * scaleFactor);
+  try {
+    const sources = await Promise.race([
+      desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: pw, height: ph } }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('capture timeout')), 12000))
+    ]);
+    const source = sources.find((s) => s.display_id === String(display.id)) || sources[0];
+    if (!source || source.thumbnail.isEmpty()) {
+      notify('截图翻译失败', '无法捕获屏幕内容');
+      return;
+    }
+    ocrCapture = { source, display, scaleFactor };
+  } catch (err) {
+    debugLog('pre-capture full-size failed: ' + err.message + '，降尺寸重试');
+    try {
+      const dw = Math.round(display.size.width);
+      const dh = Math.round(display.size.height);
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: dw, height: dh } });
+      const source = sources.find((s) => s.display_id === String(display.id)) || sources[0];
+      if (!source || source.thumbnail.isEmpty()) throw new Error('无法捕获屏幕内容');
+      ocrCapture = { source, display, scaleFactor: 1 };
+    } catch (err2) {
+      notify('截图翻译失败', String((err2 && err2.message) || err2));
+      return;
+    }
+  }
+  // 预截屏完成后再打开覆盖层，用户看到的是干净的底层画面
   const { x, y, width, height } = display.bounds;
   const win = new BrowserWindow({
     x, y, width, height,
@@ -578,7 +610,6 @@ function startOcrSelection() {
   overlay = win;
   win.setAlwaysOnTop(true, 'screen-saver');
   win.loadFile(path.join(__dirname, 'renderer', 'overlay.html'));
-  // 闭包捕获：旧窗口的 closed 事件不能清掉后来新创建的 overlay 引用
   win.on('closed', () => {
     if (overlay === win) overlay = null;
   });
@@ -636,48 +667,26 @@ async function handleOcrRect(rect) {
       notify('截图翻译', '选区太小，请框选更大一些的区域');
       return;
     }
-    const winBounds = overlay ? overlay.getBounds() : screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds;
     closeOverlay();
-    // 覆盖层必须先隐藏再截图，否则暗色遮罩会拍进图里
-    await new Promise((r) => setTimeout(r, 400));
-
-    const center = { x: winBounds.x + Math.round(rect.x + rect.width / 2), y: winBounds.y + Math.round(rect.y + rect.height / 2) };
-    const display = screen.getDisplayNearestPoint(center);
-    const scaleFactor = display.scaleFactor > 0 ? display.scaleFactor : 1;
-    const pixRect = scaleRect(rect, scaleFactor);
-    // desktopCapturer.getSources 在部分机器上对超大缩略图会挂起：限时竞速，超时降尺寸重试
-    const capture = async (w, h) => {
-      const sources = await Promise.race([
-        desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: w, height: h } }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('capture timeout')), 12000))
-      ]);
-      const source = sources.find((s) => s.display_id === String(display.id)) || sources[0];
-      if (!source || source.thumbnail.isEmpty()) throw new Error('无法捕获屏幕内容');
-      return source;
-    };
-    let source;
-    try {
-      const w = Math.round(display.size.width * scaleFactor);
-      const h = Math.round(display.size.height * scaleFactor);
-      debugLog('capturing screen ' + w + 'x' + h);
-      source = await capture(w, h);
-    } catch (err) {
-      debugLog('capture full-size failed: ' + err.message + '，降尺寸重试');
-      source = await capture(Math.round(display.size.width), Math.round(display.size.height));
+    // 使用预存的截屏（startOcrSelection 已提前截好），无时序竞争
+    const cap = ocrCapture;
+    ocrCapture = null;
+    if (!cap || !cap.source || cap.source.thumbnail.isEmpty()) {
+      notify('截图翻译失败', '截屏数据已过期，请重新按 Alt+S 框选');
+      return;
     }
-    debugLog('captured ok');
-    // 裁剪区钳制在缩略图边界内（负坐标/超宽高会被 clamp，避免 crop 越界）
-    const capSize = source.thumbnail.getSize();
-    const cx = Math.max(0, Math.min(pixRect.x, capSize.width - 1));
-    const cy = Math.max(0, Math.min(pixRect.y, capSize.height - 1));
-    const cw = Math.max(1, Math.min(pixRect.width, capSize.width - cx));
-    const ch = Math.max(1, Math.min(pixRect.height, capSize.height - cy));
+    const { source, display, scaleFactor } = cap;
+    const pixRect = scaleRect(rect, scaleFactor);
+    const thumbSize = source.thumbnail.getSize();
+    const cx = Math.max(0, Math.min(pixRect.x, thumbSize.width - 1));
+    const cy = Math.max(0, Math.min(pixRect.y, thumbSize.height - 1));
+    const cw = Math.max(1, Math.min(pixRect.width, thumbSize.width - cx));
+    const ch = Math.max(1, Math.min(pixRect.height, thumbSize.height - cy));
     if (cw < 2 || ch < 2) {
       notify('截图翻译', '选区太小，请框选更大一些的区域');
       return;
     }
     const cropped = source.thumbnail.crop({ x: cx, y: cy, width: cw, height: ch });
-    // 临时截图：固定目录 + 路径边界校验，用完即删（仅动自己生成的临时文件）
     const tmpDir = path.resolve(app.getPath('temp'), 'huayi-ocr');
     fs.mkdirSync(tmpDir, { recursive: true });
     const tmp = path.resolve(tmpDir, 'huayi-ocr-' + Date.now() + '.png');
@@ -685,7 +694,6 @@ async function handleOcrRect(rect) {
     fs.writeFileSync(tmp, cropped.toPNG());
     let text = '';
     try {
-      // Windows 用系统 WinRT OCR（离线、快）；macOS/Linux 用随包 Tesseract WASM
       if (process.platform === 'win32') {
         text = await runOcr(tmp);
       } else {
@@ -694,7 +702,7 @@ async function handleOcrRect(rect) {
       }
       debugLog('ocr raw len=' + text.length);
     } finally {
-      cleanupOcrTemp(); // 识别完成即清理截图等临时产物
+      cleanupOcrTemp();
     }
     if (!text) {
       debugLog('ocr empty text');
@@ -704,9 +712,11 @@ async function handleOcrRect(rect) {
     debugLog('ocr text len=' + text.length);
     await translateAndShow(text);
   } catch (err) {
+    ocrCapture = null; // 确保异常时也清理预存
     notify('截图翻译失败', String((err && err.message) || err));
   } finally {
     ocrBusy = false;
+    ocrCapture = null;
   }
 }
 

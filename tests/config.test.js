@@ -18,7 +18,7 @@ test('默认配置：三触发开关与任务书一致', () => {
   assert.equal(DEFAULTS.hotkeyEnabled, true);
   assert.equal(DEFAULTS.doubleCopyEnabled, true);
   assert.equal(DEFAULTS.autoPopupEnabled, false);
-  assert.equal(DEFAULTS.hotkey, 'Alt+Q');
+  assert.equal(DEFAULTS.hotkey, 'Alt+Z');
   assert.equal(DEFAULTS.model, 'mimo-v2.5-free');
   assert.deepEqual(DEFAULTS.blacklist, ['WindowsTerminal', 'powershell', 'cmd', 'conhost']);
 });

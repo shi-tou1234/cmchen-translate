@@ -16,7 +16,7 @@ const DEFAULTS = Object.freeze({
   model: 'mimo-v2.5-free',
   apiKey: '', // 空 = 运行时从 opencode auth.json 读取
   hotkeyEnabled: true,
-  hotkey: 'Alt+Q',
+  hotkey: 'Alt+Z',
   doubleCopyEnabled: true,
   doubleCopyWindowMs: 600,
   autoPopupEnabled: false,
