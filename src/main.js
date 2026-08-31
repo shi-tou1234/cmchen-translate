@@ -20,9 +20,10 @@ const { uIOhook, UiohookKey } = require('uiohook-napi');
 // 调试日志：%APPDATA%\划译\log.txt（只记划译自身行为，不记 key、不记剪贴板内容）
 function debugLog(msg) {
   try {
-    const dir = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-    fs.mkdirSync(path.join(dir, '划译'), { recursive: true });
-    fs.appendFileSync(path.join(dir, '划译', 'log.txt'), new Date().toISOString() + ' ' + msg + '\n', 'utf8');
+    const sanitized = String(msg || '').replace(/[\r\n]/g, ' ');
+    const dir = path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), '划译');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'log.txt'), new Date().toISOString() + ' ' + sanitized + '\n', 'utf8');
   } catch {}
 }
 

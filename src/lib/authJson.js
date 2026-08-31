@@ -16,10 +16,11 @@ function defaultAuthJsonPath() {
 function authJsonPath() {
   const override = process.env.HUAYI_AUTH_JSON;
   if (override) {
-    const resolved = path.resolve(override);
-    if (resolved.includes('..')) {
-      throw new Error('HUAYI_AUTH_JSON 指向的路径不合法');
+    // 校验：path.resolve 会去掉 '..' 导致后续 includes('..') 永远不命中，所以先校验原始字符串
+    if (/\.\.|\.\\|\.\//.test(override)) {
+      throw new Error('HUAYI_AUTH_JSON 路径包含非法序列');
     }
+    const resolved = path.resolve(override);
     return resolved;
   }
   return defaultAuthJsonPath();
@@ -33,7 +34,7 @@ function readOpencodeKey(providerId) {
   try {
     parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
-    throw new Error('读不到 opencode 凭据文件（' + file + '）：' + err.message);
+    throw new Error('opencode 凭据文件不存在或无法读取（请检查 ~/.local/share/opencode/auth.json）');
   }
   const entry = parsed && parsed[id];
   const key = entry && entry.key;

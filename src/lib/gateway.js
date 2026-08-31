@@ -140,21 +140,30 @@ async function translateText(opts) {
         temperature: 0,
         stream: false
       }),
-      signal: controller.signal
+      signal: controller.signal,
+      redirect: 'manual' // 防止 SSRF 重定向：不自动跟随，后续手动校验
     });
-    if (!res.ok) {
+    // 手动跟随重定向（最多 3 次），每次对目标再次校验是否公网地址
+    let res2 = res;
+    let hops = 0;
+    while (res2.status >= 300 && res2.status < 400 && res2.headers.get('location') && hops < 3) {
+      const nextUrl = res2.headers.get('location');
+      const hopCheck = isPublicHttpUrl(nextUrl);
+      if (!hopCheck.ok) throw new Error('重定向目标被拒绝：' + hopCheck.reason);
+      res2 = await doFetch(nextUrl, { redirect: 'manual', signal: controller.signal });
+      hops++;
+    }
+    if (!res2.ok) {
       let detail = '';
       try {
-        const j = await res.json();
+        const j = await res2.json();
         if (j && j.error) detail = j.error.message || JSON.stringify(j.error);
-      } catch {
-        /* 非 JSON 错误体，忽略 */
-      }
-      const err = new Error('翻译服务返回 HTTP ' + res.status + (detail ? '：' + detail : ''));
-      err.status = res.status;
+      } catch {}
+      const err = new Error('翻译服务返回 HTTP ' + res2.status + (detail ? '：' + detail : ''));
+      err.status = res2.status;
       throw err;
     }
-    const data = await res.json();
+    const data = await res2.json();
     const content =
       data && data.choices && data.choices[0] && data.choices[0].message
         ? data.choices[0].message.content
